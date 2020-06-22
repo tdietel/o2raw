@@ -1,24 +1,31 @@
 // -*- mode: c++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 
+#include <AliTRDrawStream.h>
+#include <AliTRDdigitsManager.h>
+
 void raw_analysis( TString infile = "/alice/data/2018/LHC18a/000283989/raw/18000283989033.808.root",
                    TString outfile = "",
                    int nev = 1000)
 {
 
+
     // ==================================================================
     // Create the raw data file reader
     //
+
+    AliRawReader* reader = NULL;
+
     if (infile.Contains(".root")) {
-        
+
         cout << "[I] Reading with ROOT" << endl;
         AliRawReaderRoot *readerDate = new AliRawReaderRoot(infile);
         readerDate->SelectEquipment(0, 1024, 1024);
         readerDate->Select("TRD");
-        //readerDate->SelectEvents(7);      
+        //readerDate->SelectEvents(7);
         reader = (AliRawReader*)readerDate;
-        
+
     } else if (infile.Contains(":")) {
-        
+
         cout << "[I] Reading DATE monitoring events" << endl;
         AliRawReaderDateOnline *readerRoot = new AliRawReaderDateOnline(infile);
         readerRoot->SelectEquipment(0, 1024, 1041);
@@ -26,7 +33,7 @@ void raw_analysis( TString infile = "/alice/data/2018/LHC18a/000283989/raw/18000
         //readerRoot->SelectEvents(7);
       reader = (AliRawReader*)readerRoot;
     }
- 
+
     // ==================================================================
     // Set up output file and histograms
     TFile of;
@@ -42,20 +49,20 @@ void raw_analysis( TString infile = "/alice/data/2018/LHC18a/000283989/raw/18000
 
     TH1F *htbsum = new TH1F("htbsum", "TBsum spectrum",
                             1000, 0.0, 30000.);
-   
+
     TH1F *hptphase = new TH1F("hptphase", "pretrigger phase",
-                              32, -0.5, 31.5.);
-   
+                              32, -0.5, 31.5);
+
     gStyle->SetPalette(1);
     gStyle->SetOptStat(0);
 
-    
+
     // ==================================================================
     // some old debug settings, maybe they will be useful...
     //AliLog::SetClassDebugLevel("AliTRDrawStreamTB", 20);
     //AliLog::SetClassDebugLevel("AliTRDrawStreamTB", 8);
     //AliLog::SetClassDebugLevel("AliTRDrawStreamTB", 5);
-    
+
     //AliTRDrawStreamTB::SetNoDebug();
     //AliTRDrawStreamTB::SetNoErrorWarning();
     //AliTRDrawStreamTB::SetForceCleanDataOnly(); // cosmics
@@ -70,11 +77,11 @@ void raw_analysis( TString infile = "/alice/data/2018/LHC18a/000283989/raw/18000
     // ==================================================================
     // Set up the reader classes
     Int_t ievent = 0; //-1
-    
+
     AliTRDdigitsManager *digMan = new AliTRDdigitsManager();
     digMan->CreateArrays();
-    
-    rawStream = new AliTRDrawStream(reader);
+
+    AliTRDrawStream* rawStream = new AliTRDrawStream(reader);
 
     TClonesArray trkl("AliTRDtrackletMCM");
     rawStream->SetTrackletArray(&trkl);
@@ -85,11 +92,11 @@ void raw_analysis( TString infile = "/alice/data/2018/LHC18a/000283989/raw/18000
 
     while (reader->NextEvent()) {
         ievent++;
-        
+
         if (ievent >= nev) break;
 
         //digMan->ResetArrays();
-        
+
         if (ievent % 10 == 0) {
             cout << "Event " << ievent << endl;
         }
@@ -105,16 +112,16 @@ void raw_analysis( TString infile = "/alice/data/2018/LHC18a/000283989/raw/18000
         // number of tracklets
         hntrkl->Fill(trkl.GetEntries());
 
-        
+
         // ------------------------------------------------------------
         // ADC and TBsum spectra
         for (int det=0; det<540; det++) {
-            
+
             AliTRDSignalIndex* idx = digMan->GetIndexes(det);
-            
+
             if (!idx) continue;
             if (!idx->HasEntry()) continue;
-            
+
             int r,c;
             while (idx->NextRCIndex(r,c)) {
 
@@ -127,18 +134,18 @@ void raw_analysis( TString infile = "/alice/data/2018/LHC18a/000283989/raw/18000
                 htbsum->Fill(tbsum);
             }
         }
-        
+
         trkl.Clear();
 
     } //while event
 
-    
+
     // ==================================================================
     delete rawStream;
-   
+
     if (reader)
         delete reader;
-    
+
 
     // ==================================================================
 
@@ -147,14 +154,14 @@ void raw_analysis( TString infile = "/alice/data/2018/LHC18a/000283989/raw/18000
     cadc->cd();
     hadc->SetXTitle("ADC");
     hadc->Draw();
-        
+
     TCanvas* ctbsum = new TCanvas("tbsum", "TBsum Spectrum");
     ctbsum->SetLogy();
     ctbsum->cd();
     htbsum->SetXTitle("#Sigma ADC");
     htbsum->Draw();
-        
+
     //hntrkl->Draw();
     //htbsum->Draw();
-    
+
 }
